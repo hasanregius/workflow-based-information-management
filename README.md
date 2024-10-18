@@ -1,10 +1,10 @@
 # workflow-based-information-management
-A nimble, reusable, and dependable data infrastructure for organizations to be able to quickly execute research studies and provide insights to inform public health policy and practice. Further abstraction is underway and will further simplify current scripts into smaller, more compact scripts.
+A nimble, reusable, and dependable data infrastructure for organizations to be able to quickly execute research studies. Further abstraction is underway and will further simplify current scripts into smaller, more compact scripts.
 
 ## Setup and Installation
 
 ### Configuration
-The program refers to the [configuration file](./scripts/config.yml) for all of its processes so that any changes demanded of the program (e.g., changing column names in the dataset, changing data pull method, etc) can be done through the configuration file and without modifying the code. An example configuration file is included in the repository, though any project-specific details have been removed from the file.
+The program refers to the [configuration file](./scripts/config.yml) for all of its processes so that any changes demanded of the program (e.g., changing column names in the dataset, changing data pull method, etc) can be done through the configuration file or the scheduleR and without modifying the code. An example configuration file is included in the repository, though any project-specific details have been removed from the file.
 
 ### Installation of dependencies
 
