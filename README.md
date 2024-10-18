@@ -37,6 +37,7 @@ If relying on sFTP connections for the data pull workflow, [Stenevang/sftp]("htt
 - Notification scripts for data stakeholders: [Db notify]("./scripts/helper_scripts/db_notification.R")
 - Update records in a database based on key-pair values: [Db update]("./scripts/helper_scripts/update_mssql_db.R")
 - Record removal: [Remove records](./scripts/helper_scripts/remov_records_mssql_db.R)
+- Backups: [Db backup]("./scripts/helper_scripts/backup_db.R")
 
 ### 4. Reporting
 - Examples of reporting scripts: [Report test results]("./scripts/report_test_results_v2.R"), [Donation data reporting]("./scripts/donation_report_prep.R")
