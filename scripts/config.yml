@@ -1,0 +1,264 @@
+# Unless you are writing custom script(s), please keep all 1st degree objects
+# otherwise program will break
+
+db_connect :
+  server_address : vtlwsqlp0019.bloodsystems.org
+  port : 1433
+  db_name : VRI_Sandbox
+  driver : /opt/homebrew/Cellar/freetds/1.4.10/lib/libtdsodbc.0.so
+  # The following arguments can be omitted if you'd like to enter either manually:
+  employee_id : 315852
+  pass_dir : ~/.secrets/creds.txt
+
+qc_flows :
+  arc_manifest :
+    qc_all_fields : no
+    testing_data : no
+    scripts : [better_glue, db_connect]
+    directories :
+      submission : ~/rdc_files/submissions/
+      accepted : ~/rdc_files/accepted/
+      validation : ~/rdc_files/dvr/
+    fields : [din, donor_id, cohort, bco, collection_date, aliquot_type, aliquot_anticoagulant]
+
+db_accessioning_flows :
+  arc :
+    table_list : [samples, cv2gs_results, cv2tn_results]
+  vtl :
+    table_list : [visits, dhq, qualtrics, cv2gs_results, cv2tn_results, rvpn_results]
+  notifications :
+    post : yes
+    dir : ~/OneDrive - Vitalant/Vitalant Repeat Donor Cohorts/Data Management/Database Updates/
+
+reporting_flows :
+  donation_report :
+    db_tables :
+      vtl : [donors, visits]
+    fieldnames : [din, donor_id, cohort, bco, collection_date, age_in_months, gender, dhq_vaccination_status_donation, dhq_vaccination_status_ever, race, ethnicity_hispanic, zip_code, abo_blood_group, rh_factor, donation_type, donation_procedure, phlebotomy_status, sample_status]
+  testing_report :
+    db_tables :
+      arc : [samples, cv2gs, cv2tn]
+      vtl : [donors, visits, samples, cv2gs, nc_total_ig_results]
+    fieldnames :
+      - din
+      - donor_id
+      - cohort
+      - bco
+      - collection_date
+      - aliquot_type
+      - aliquot_anticoagulant
+      - vitros_quant_s_igg_bauml
+      - vitros_quant_s_igg_quantification
+      - vitros_quant_s_igg_dilution_factor
+      - vitros_quant_s_igg_interpretation
+      - vitros_quant_s_igg_reagent_lot
+      - vitros_quant_s_igg_test_date
+      - nc_test_name
+      - nc_sco_dil_1
+      - nc_sco_dil_20
+      - nc_sco_dil_400
+      - nc_interpretation
+      - nc_total_ig_reagent_lot_dil_1
+      - nc_total_ig_reagent_lot_dil_20
+      - nc_total_ig_reagent_lot_dil_400
+      - nc_total_ig_test_date_dil_1
+      - nc_total_ig_test_date_dil_20
+      - nc_total_ig_test_date_dil_400
+      - nc_dilution_factor_final_result
+    directories :
+      output : ~/Desktop
+    scripts : [scripts/helper_scripts/better_glue.R, scripts/helper_scripts/db_connect.R]
+
+sftp_connect :
+  server : vtllsftp1.bloodsystems.org
+  port : 222
+  folder : home
+  username : vri_admin
+  # The following argument can be omitted if you'd like to enter either manually:
+  pass_dir : ~/hasansulaeman/REDSIV Serosurvey/SFTP/PWD/PWD.rtf
+
+db_backup :
+  directory : "~/rdc_files/db_backups/"
+  tables :
+  - "dbo.cv2gs"
+  - "dbo.cv2ts"
+  - "dbo.donors"
+  - "dbo.geo_ref"
+  - "dbo.msd_multiplex"
+  - "dbo.nc_total_ig_results"
+  - "dbo.race_ref"
+  - "dbo.samples"
+  - "dbo.substudy_din_list"
+  - "dbo.survey_infections"
+  - "dbo.survey_results"
+  - "dbo.survey_vaccinations"
+  - "dbo.visits"
+  - "dbo.vri_rvpn"
+  - "dbo.vtl_survey_merged_donor_ids"
+  - "dbo.vtl_survey_answers"
+  - "dbo.vtl_survey_donor_linkage"
+  - "dbo.vtl_survey_questions"
+  - "dbo.vtl_survey_responses"
+
+# For other studies, you could turn org_acc into a list
+sftp_scrape :
+  org_acc : vri_arc
+  study_name : repeat_donor_cohorts
+  directories :
+    submission : ~/rdc_files/submissions/
+    accepted : ~/rdc_files/accepted/
+    validation : ~/rdc_files/dvr/
+  scripts : [better_glue, db_connect]
+
+# For the codebook, the following logic applies:
+# 1. Each field has a field type is_x attribute to inform the QC process it will undergo
+#    > List of field types : is_key, is_factor, is_numeric, is_date, is_character, and is_calculated
+# 2. Mainly structured by field apart from test_results fields, which is nested within each assay
+#
+# is_factor fields:
+#   > Factors must be supplied
+#   > If explicit_null is NULL, a null value is not permitted for the field
+# is_key fields:
+#   > Field length (nchar) must be supplied
+#   > Prefixes, where applicable, should be supplied
+# is_numeric fields:
+#   > length is supplied as a vector [nchar,decimal_nchar]
+#   > max or min_value should be supplied where applicable
+# is_date fields:
+#   > If explicit_null is NULL, a null value is not permitted for the field
+# is_character fields:
+#   > For free text fields and zip codes
+#   > For zip codes, specify is_zipcode : yes
+# is_calculated fields:
+#   > mostly to let the QC script know to skip QC for the field
+#   > Feel free to add attributes for your own benefit
+
+codebook :
+  din :
+    is_key : yes
+    nchar : 13
+    prefixes : [W,A]
+  donor_id :
+    is_key : yes
+    nchar : 10
+    prefixes : [ARC,VTL]
+  age_in_months :
+    is_calculated : yes
+    calc_field : donors.mob
+  collection_date :
+    is_date : yes
+    not_null : yes
+  cohort :
+    is_factor : yes
+    factors : [IV, NIV, INV, NINV]
+  bco :
+    is_factor : yes
+    factors : [ARC,VTL]
+  zip_code :
+    is_character : yes
+    is_zipcode : yes
+    explicit_null : "99999"
+  abo_blood_group :
+    is_factor : yes
+    factors : [a,b,ab,o]
+    explicit_null : unavailable
+  rh_factor :
+    is_factor : yes
+    factors : [positive, negative]
+  gender :
+    is_factor : yes
+    factors : [male, female, other]
+  donation_type :
+    is_factor : yes
+    factors : [autologous, ccp, directed/designated, allogeneic/homologous, limited_exposure, other, research, therapeutic]
+    explicit_null : other
+  donation_procedure :
+    is_factor : yes
+    factors : [leukopheresis, other, plateletpheresis/plasmapheresis, plateletpheresis/plasmapheresis/rbc,plateletpheresis/rbc,plasmapheresis/rbc,plateletpheresis, plasmapheresis, single_rbc, double_rbc, stem_cells, sample_only, whole_blood]
+    explicit_null : other
+  phlebotomy_status :
+    is_factor : yes
+    factors : [successful_phlebotomy, unsuccessful_phlebotomy]
+  dhq_vaccination_status_donations :
+    is_factor : yes
+    factors : [vaccinated, not_vaccinated, unavailable]
+    explicit_null : unavailable
+  dhq_vaccination_status_ever :
+    is_factor : yes
+    factors : [vaccinated_ever, not_vaccinated_ever, unavailable]
+    explicit_null : unavailable
+  race :
+    is_factor : yes
+    factors : [asian, american_indian, black, pacific_islander, other, more_than_one, unavailable, hispanic_ethnicity]
+    explicit_null : unavailable
+  ethnicity_hispanic :
+    is_factor : yes
+    factors : ["false","true","unavailable"]
+    explicit_null : unavailable
+  sample_status :
+    is_factor : yes
+    factors : [unavailable, available]
+  aliquot_type :
+    is_factor : yes
+    factors : [plasma, serum, multiple, unavailable]
+    explicit_null : unavailable
+  aliquot_anticoagulant :
+    is_factor : yes
+    factors : [none, edta, multiple, unavailable]
+    explicit_null : unavailable
+  test_results :
+    cv2gs :
+      vitros_quant_s_igg_bauml :
+        is_numeric : yes
+        explicit_null : 999999.88
+        length : [8,2]
+        min_value : 2.00
+      vitros_quant_s_igg_quantification :
+        is_factor : yes
+        factors : [within_loq, below_loq, above_loq, not_tested]
+        explicit_null : not_tested
+      vitros_quant_s_igg_interpretation :
+        is_factor : yes
+        factors : [qns, not_tested, test_not_ordered, reactive, non-reactive, inconclusive]
+        explicit_null : not_tested
+      vitros_quant_s_igg_dilution_factor :
+        is_numeric : yes
+        length : [3,0]
+        explicit_null : 998
+      vitros_quant_s_igg_test_date :
+        is_date : yes
+        explicit_null : 2222-01-01
+      vitros_quant_igg_s_reagent_lot :
+        is_numeric : true
+        length : [4,0]
+        max_value : 1000
+        explicit_null : 998
+    cv2tn :
+      nc_test_name :
+        is_factor : yes
+        factors : [roche_total_ig_nc, ortho_total_ig_nc]
+      nc_sco :
+        is_numeric : yes
+        explicit_null : 9999.88
+        length : [6,2]
+        min_value : 0.01
+      nc_interpretation :
+        is_factor : yes
+        factors : [qns, not_tested, test_not_ordered, reactive, non-reactive]
+        explicit_null : not_tested
+      nc_total_ig_reagent_lot :
+        is_numeric : yes
+        length : [4,0]
+        max_value : 1000
+        explicit_null : 9998
+      nc_total_ig_test_date :
+        is_date : yes
+        explicit_null : 2222-01-01
+survey_codebook :
+  survey_diagnoses : [donor_did, response_id, infection_id, pos_qcat_num, pos_date, pos_date_approx, pos_test_type, pos_anysx, pos_brain, pos_brain_episl, pos_brain_episnum, pos_cough, pos_cough_episl, pos_cough_episnum, pos_fatigue, pos_fatigue_episl, pos_fatigue_episnum, pos_fever, pos_fever_episl, pos_fever_episnum, pos_head, pos_head_episl, pos_head_episnum, pos_memory, pos_memory_episl, pos_memory_episnum, pos_muscle, pos_muscle_episl, pos_muscle_episnum, pos_nausea, pos_nausea_episl, pos_nausea_episnum, pos_runny, pos_runny_episl, pos_runny_episnum, pos_senses, pos_senses_episl, pos_senses_episnum, pos_sob, pos_sob_episl, pos_sob_episnum, pos_throat, pos_throat_episl, pos_throat_episnum, pos_other1_sx, pos_other1_sx_text, pos_other1_sx_episl, pos_other1_sx_episnum, pos_other2_sx, pos_other2_sx_text, pos_other2_sx_episl, pos_other2_sx_episnum, pos_healthcare_hospital, pos_healthcare_tele, pos_healthcare_urgent, pos_healthcare_clinic, pos_healthcare_other, pos_healthcare_other_text, pos_healthcare_none, pos_hospitalized]
+  suspected_diagnoses : [donor_did, response_id, sus_qcat_num, sus_date, sus_date_approx, sus_belief_exposed, sus_belief_symptoms, sus_belief_negative, sus_belief_other]
+  vaccinations : [donor_did, response_id, vax_qcat_num, vax_dose, vax_name, vax_other_name_text, vax_date, vax_date_approx, vax_sx, vax_fatigue, vax_fatigue_length, vax_fever, vax_fever_length, vax_lymph, vax_lymph_length, vax_muscle, vax_muscle_length, vax_nausea, vax_nausea_length, vax_sore, vax_sore_length, vax_other1_sx, vax_other1_sx_length, vax_other1_sx_text, vax_other2_sx, vax_other2_sx_length, vax_other2_sx_text]
+  vaccination_opinions : [donor_did, response_id, vax_recommend, unvaxxed_barrier_safety, unvaxxed_barrier_beliefs, unvaxxed_barrier_young, unvaxxed_barrier_exposure, unvaxxed_barrier_transport, unvaxxed_barrier_clinic_unk, unvaxxed_barrier_ineligible, unvaxxed_barrier_clinic_far_hrs, unvaxxed_barrier_appointment, unvaxxed_barrier_busy, unvaxxed_barrier_childcare, unvaxxed_barrier_work, unvaxxed_barrier_other, unvaxxed_barrier_other_text, unvaxxed_barrier_unsure, unvaxxed_concern, unvaxxed_ease, vaxxed_concern, vaxxed_ease, vaxxed_motivation_health_self, vaxxed_motivation_health_fam, vaxxed_motivation_health_comm, vaxxed_motivation_work_school, vaxxed_motivation_social, vaxxed_motivation_travel, vaxxed_motivation_encouraged, vaxxed_motivation_unsure, vaxxed_motivation_other, vaxxed_motivation_other_text]
+  donorhealth : [donor_did, response_id, healthconditions_asthma, healthconditions_resp_other, healthconditions_cardio, healthconditions_hbp, healthconditions_diabetes, healthconditions_immune, healthconditions_kidney, healthconditions_liver, healthconditions_neuro, healthconditions_cancer, healthconditions_none_above, healthrating, smoking, cig_num]
+  longcovid : [donor_did, response_id, lc_anxiety, lc_anxiety_months, lc_anxiety_ongoing, lc_appetite, lc_appetite_months, lc_appetite_ongoing, lc_balance, lc_balance_months, lc_balance_ongoing, lc_bleed, lc_bleed_months, lc_bleed_ongoing, lc_brain, lc_brain_months, lc_brain_ongoing, lc_chest, lc_chest_months, lc_chest_ongoing, lc_chew, lc_chew_months, lc_chew_ongoing, lc_constipation, lc_constipation_months, lc_constipation_ongoing, lc_cough, lc_cough_months, lc_cough_ongoing, lc_depress, lc_depress_months, lc_depress_ongoing, lc_diarrhea, lc_diarrhea_months, lc_diarrhea_ongoing, lc_dizzy, lc_dizzy_months, lc_dizzy_ongoing, lc_fatigue, lc_fatigue_months, lc_fatigue_ongoing, lc_fever, lc_fever_months, lc_fever_ongoing, lc_hair, lc_hair_months, lc_hair_ongoing, lc_head, lc_head_months, lc_head_ongoing, lc_heart, lc_heart_months, lc_heart_ongoing, lc_jointswell, lc_jointswell_months, lc_jointswell_ongoing, lc_mood, lc_mood_months, lc_mood_ongoing, lc_muscle, lc_muscle_months, lc_muscle_ongoing, lc_nausea, lc_nausea_months, lc_nausea_ongoing, lc_numb, lc_numb_months, lc_numb_ongoing, lc_period, lc_period_months, lc_period_ongoing, lc_ptsd, lc_ptsd_months, lc_ptsd_ongoing, lc_runny, lc_runny_months, lc_runny_ongoing, lc_skin, lc_skin_months, lc_skin_ongoing, lc_sleep, lc_sleep_months, lc_sleep_ongoing, lc_smell, lc_smell_months, lc_smell_ongoing, lc_sob, lc_sob_months, lc_sob_ongoing, lc_speak, lc_speak_months, lc_speak_ongoing, lc_stomach, lc_stomach_months, lc_stomach_ongoing, lc_taste, lc_taste_months, lc_taste_ongoing, lc_throat, lc_throat_months, lc_throat_ongoing, lc_weight, lc_weight_months, lc_weight_ongoing, lc_worse, lc_worse_months, lc_worse_ongoing, lc_other1_sx, lc_other1_sx_text, lc_other1_sx_months, lc_other1_sx_ongoing, lc_other2_sx, lc_other2_sx_text, lc_other2_sx_months, lc_other2_sx_ongoing, lc_healthcare_ever, lc_healthcare_primary, lc_healthcare_cardio, lc_healthcare_derm, lc_healthcare_mental, lc_healthcare_neuro, lc_healthcare_pt, lc_healthcare_pulm, lc_healthcare_other, lc_healthcare_other_text, lc_healthcare_unk, lc_sx4wks, lc_self, lc_self_sx4wks, lc_still]
+  survey_donor : [donor_did, b1_response_id, b2_response_id, b3_response_id, f1_response_id, f2_response_id, f3_response_id, f4_response_id, date_last_responded, positive_ever, positive_num, vaccine_ever, vaccine_num, suspected_ever, suspected_num, survey_enddate, declined_ever]
